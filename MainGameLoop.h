@@ -26,13 +26,18 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
         }
         else if (temp1 == 0)
         {
-            std::cout << "Connection Closing\n";
+            std::cout << "Connection Closing!\n";
             break;
             //return 0;
         }
         else
         {
             std::cout << "recv failed: " << WSAGetLastError() << std::endl;
+            delete[] recvbuf1;
+            delete[] recvbuf2;
+            delete[] gamename;
+            delete[] password;
+            delete[] statstring;
             closesocket(ClientSocket);
             return 1;
         }
@@ -43,7 +48,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
             temp1 = 4;
             std::cout << "Received corrupt buffer or W3GS message(first byte was not 0xFF)\n";
         }
-        if((temp1 != (recvbuf1[3] * 256) + recvbuf1[2]) && (recvbuf1[1] != 0x00))
+        if(temp1 != (((unsigned short)recvbuf1[3] * 256) + (unsigned short)recvbuf1[2]))
         {
             std::cout << "size in packet: " << (unsigned short)((recvbuf1[3] * 256) + recvbuf1[2]) <<
             " differs from packet size: " << temp1 << std::endl;
@@ -125,8 +130,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                         if (temp1 == SOCKET_ERROR)
                         {
                             printf("Send failed: %d\n", WSAGetLastError());
+                            delete[] recvbuf1;
+                            delete[] recvbuf2;
+                            delete[] gamename;
+                            delete[] password;
+                            delete[] statstring;
                             closesocket(ClientSocket);
-                            //WSACleanup();
                             return 1;
                         }
                     }
@@ -138,8 +147,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                         if (temp1 == SOCKET_ERROR)
                         {
                             printf("Send failed: %d\n", WSAGetLastError());
+                            delete[] recvbuf1;
+                            delete[] recvbuf2;
+                            delete[] gamename;
+                            delete[] password;
+                            delete[] statstring;
                             closesocket(ClientSocket);
-                            //WSACleanup();
                             return 1;
                         }
                     }
@@ -184,8 +197,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf1;
+                    delete[] recvbuf2;
+                    delete[] gamename;
+                    delete[] password;
+                    delete[] statstring;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
                 break;
@@ -196,8 +213,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf1;
+                    delete[] recvbuf2;
+                    delete[] gamename;
+                    delete[] password;
+                    delete[] statstring;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
                 break;
@@ -226,8 +247,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf1;
+                    delete[] recvbuf2;
+                    delete[] gamename;
+                    delete[] password;
+                    delete[] statstring;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
                 break;
@@ -251,8 +276,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf1;
+                    delete[] recvbuf2;
+                    delete[] gamename;
+                    delete[] password;
+                    delete[] statstring;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
                 break;
@@ -311,8 +340,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf1;
+                    delete[] recvbuf2;
+                    delete[] gamename;
+                    delete[] password;
+                    delete[] statstring;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
                 break;
@@ -344,8 +377,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf1;
+                    delete[] recvbuf2;
+                    delete[] gamename;
+                    delete[] password;
+                    delete[] statstring;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
                 break;
@@ -379,8 +416,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf1;
+                    delete[] recvbuf2;
+                    delete[] gamename;
+                    delete[] password;
+                    delete[] statstring;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
                 //std::this_thread::sleep_for(std::chrono::milliseconds(15));
@@ -388,6 +429,54 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
             }
             case 0x44: //SID_WARCRAFTGENERAL
             {
+                switch(recvbuf1[4])
+                {
+                    case 2:
+                    {
+                        char SID_WARCRAFTGENERAL[11] = {0xFF, 0x44, 0x0B, 0x00, 0x02};
+                        SID_WARCRAFTGENERAL[5]=recvbuf1[5];
+                        SID_WARCRAFTGENERAL[6]=recvbuf1[6];
+                        SID_WARCRAFTGENERAL[7]=recvbuf1[7];
+                        SID_WARCRAFTGENERAL[8]=recvbuf1[8];
+                        temp1 = send(ClientSocket, SID_WARCRAFTGENERAL, sizeof(SID_WARCRAFTGENERAL), 0);
+                        if (temp1 == SOCKET_ERROR)
+                        {
+                            printf("Send failed: %d\n", WSAGetLastError());
+                            delete[] recvbuf1;
+                            delete[] recvbuf2;
+                            delete[] gamename;
+                            delete[] password;
+                            delete[] statstring;
+                            closesocket(ClientSocket);
+                            return 1;
+                        }
+                        break;
+                    }
+                    case 7:
+                    {
+                        char SID_WARCRAFTGENERAL[29] = {0xFF, 0x44, 0x1D, 0x00, 0x07};
+                        SID_WARCRAFTGENERAL[5]=recvbuf1[5];
+                        SID_WARCRAFTGENERAL[6]=recvbuf1[6];
+                        SID_WARCRAFTGENERAL[7]=recvbuf1[7];
+                        SID_WARCRAFTGENERAL[8]=recvbuf1[8];
+                        //There should be a filetime for when the status was last changed
+                        temp1 = send(ClientSocket, SID_WARCRAFTGENERAL, sizeof(SID_WARCRAFTGENERAL), 0);
+                        if (temp1 == SOCKET_ERROR)
+                        {
+                            printf("Send failed: %d\n", WSAGetLastError());
+                            delete[] recvbuf1;
+                            delete[] recvbuf2;
+                            delete[] gamename;
+                            delete[] password;
+                            delete[] statstring;
+                            closesocket(ClientSocket);
+                            return 1;
+                        }
+                        break;
+                    }
+                }
+                std::cout << "Got SID_WARCRAFTGENERAL subcommand: " << std::hex
+                            << (int)recvbuf1[4] << std::dec << "\n";
                 break;
             }
             case 0x45: //SID_NETGAMEPORT
@@ -403,8 +492,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf1;
+                    delete[] recvbuf2;
+                    delete[] gamename;
+                    delete[] password;
+                    delete[] statstring;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
             }
@@ -428,8 +521,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                     if (temp1 == SOCKET_ERROR)
                     {
                         printf("Send failed: %d\n", WSAGetLastError());
+                        delete[] recvbuf1;
+                        delete[] recvbuf2;
+                        delete[] gamename;
+                        delete[] password;
+                        delete[] statstring;
                         closesocket(ClientSocket);
-                        //WSACleanup();
                         return 1;
                     }
                 }
@@ -444,8 +541,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                     if (temp1 == SOCKET_ERROR)
                     {
                         printf("Send failed: %d\n", WSAGetLastError());
+                        delete[] recvbuf1;
+                        delete[] recvbuf2;
+                        delete[] gamename;
+                        delete[] password;
+                        delete[] statstring;
                         closesocket(ClientSocket);
-                        //WSACleanup();
                         return 1;
                     }
                 }
@@ -469,8 +570,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                     if (temp1 == SOCKET_ERROR)
                     {
                         printf("Send failed: %d\n", WSAGetLastError());
+                        delete[] recvbuf1;
+                        delete[] recvbuf2;
+                        delete[] gamename;
+                        delete[] password;
+                        delete[] statstring;
                         closesocket(ClientSocket);
-                        //WSACleanup();
                         return 1;
                     }
                     break;
@@ -509,8 +614,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                     if (temp1 == SOCKET_ERROR)
                     {
                         printf("Send failed: %d\n", WSAGetLastError());
+                        delete[] recvbuf1;
+                        delete[] recvbuf2;
+                        delete[] gamename;
+                        delete[] password;
+                        delete[] statstring;
                         closesocket(ClientSocket);
-                        //WSACleanup();
                         return 1;
                     }
                     std::cout << "Bytes of confirmation sent: " << temp1 << std::endl;
@@ -523,8 +632,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                     if (temp1 == SOCKET_ERROR)
                     {
                         printf("Send failed: %d\n", WSAGetLastError());
+                        delete[] recvbuf1;
+                        delete[] recvbuf2;
+                        delete[] gamename;
+                        delete[] password;
+                        delete[] statstring;
                         closesocket(ClientSocket);
-                        //WSACleanup();
                         return 1;
                     }
                     std::cout << "Bytes of error sent: " << temp1 << std::endl;
@@ -686,8 +799,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf1;
+                    delete[] recvbuf2;
+                    delete[] gamename;
+                    delete[] password;
+                    delete[] statstring;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
                 std::cout << "Bytes of confirmation sent: " << temp1 << std::endl;
@@ -697,8 +814,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                     if (temp1 == SOCKET_ERROR)
                     {
                         printf("Send failed: %d\n", WSAGetLastError());
+                        delete[] recvbuf1;
+                        delete[] recvbuf2;
+                        delete[] gamename;
+                        delete[] password;
+                        delete[] statstring;
                         closesocket(ClientSocket);
-                        //WSACleanup();
                         return 1;
                     }
                     std::cout << "Bytes of set_email sent: " << temp1 << std::endl;
@@ -739,8 +860,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf1;
+                    delete[] recvbuf2;
+                    delete[] gamename;
+                    delete[] password;
+                    delete[] statstring;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
                 break;
@@ -751,8 +876,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf1;
+                    delete[] recvbuf2;
+                    delete[] gamename;
+                    delete[] password;
+                    delete[] statstring;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
                 break;
@@ -774,14 +903,16 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
     } while(temp1 > 0);
     delete[] recvbuf1;
     delete[] recvbuf2;
+    delete[] gamename;
+    delete[] password;
     delete[] statstring;
-    temp1 = shutdown(ClientSocket, SD_SEND);
+    temp1 = shutdown(ClientSocket, SD_BOTH);
     if (temp1 == SOCKET_ERROR)
     {
         printf("shutdown failed: %d\n", WSAGetLastError());
         closesocket(ClientSocket);
-        //WSACleanup();
         return 1;
     }
+    closesocket(ClientSocket);
     return 0;
 }

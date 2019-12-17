@@ -4,7 +4,7 @@ WSADATA data;
 SOCKET ListenSocket = INVALID_SOCKET;
 struct addrinfo *result = NULL, *ptr = NULL, hints;
 Timer timer;
-char *bind_port = "6112";
+char bind_port[] = "6112";
 int ClientThread(SOCKET ClientSocket)
 {
     char game[4];
@@ -20,6 +20,7 @@ int ClientThread(SOCKET ClientSocket)
     {
         printf("recv failed: %d\n", WSAGetLastError());
         closesocket(ClientSocket);
+        delete[] recvbuf;
         return 1;
     }
     switch (recvbuf[0]) //Authentication and mode choice
@@ -42,40 +43,16 @@ int ClientThread(SOCKET ClientSocket)
             {
                 printf("recv failed: %d\n", WSAGetLastError());
                 closesocket(ClientSocket);
-                //WSACleanup();
+                delete[] recvbuf;
                 return 1;
             }
-            /*temp = send(ClientSocket, SID_NULL, 4, 0);
-            printf("KeepAlive sent\n");
-            if (temp == SOCKET_ERROR)
-            {
-                printf("send failed: %d\n", WSAGetLastError());
-                closesocket(ClientSocket);
-                //WSACleanup();
-                return 1;
-            }
-            printf("Bytes of KeepAlive sent: %d\n", temp);
-            if(strcmp("WAR3", game) != 0)
-            {
-                temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
-                if (temp > 0)
-                {
-                    std::cout << "Received bytes of KeepAlive: " << temp << std::endl;
-                }
-                else
-                {
-                    printf("recv failed: %d\n", WSAGetLastError());
-                    closesocket(ClientSocket);
-                    //WSACleanup();
-                    return 1;
-                }
-            }*/
+
             temp = send(ClientSocket, SID_PING_DATA.data(), SID_PING_DATA.size(), 0);
             if (temp == SOCKET_ERROR)
             {
                 printf("send failed: %d\n", WSAGetLastError());
                 closesocket(ClientSocket);
-                //WSACleanup();
+                delete[] recvbuf;
                 return 1;
             }
             timer.start();
@@ -86,7 +63,7 @@ int ClientThread(SOCKET ClientSocket)
                 int time = timer.elapsedMilliseconds();
                 std::cout << "Ping is " << time << "ms\n";
                 verbyte = recvbuf[16] & 0xFF;
-                if((strcmp("W3XP", game) == 0) || (strcmp("WAR3", game) == 0))
+                if((strncmp("W3XP", game, 4) == 0) || (strncmp("WAR3", game, 4) == 0))
                 {
                     if(verbyte == 0xD2)
                     {
@@ -100,7 +77,7 @@ int ClientThread(SOCKET ClientSocket)
                         temp = send(ClientSocket, SID_AUTH_INFO.data(), SID_AUTH_INFO.size(), 0);
                     }
                 }
-                else if(strcmp("W3DM", game) == 0)
+                else if(strncmp("W3DM", game, 4) == 0)
                 {
                     temp = send(ClientSocket, SID_AUTH_INFO_W3DEMO.data(), SID_AUTH_INFO_W3DEMO.size(), 0);
                     demo = 1;
@@ -113,7 +90,7 @@ int ClientThread(SOCKET ClientSocket)
                 {
                     printf("send failed: %d\n", WSAGetLastError());
                     closesocket(ClientSocket);
-                    //WSACleanup();
+                    delete[] recvbuf;
                     return 1;
                 }
                 temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
@@ -122,14 +99,12 @@ int ClientThread(SOCKET ClientSocket)
                     packets.write(recvbuf, temp);
                     packets << std::endl;
 
-                    delete[] recvbuf;
-
                     temp = send(ClientSocket, SID_AUTH_CHECK, sizeof(SID_AUTH_CHECK), 0);
                     if (temp == SOCKET_ERROR)
                     {
                         printf("send failed: %d\n", WSAGetLastError());
                         closesocket(ClientSocket);
-                        //WSACleanup();
+                        delete[] recvbuf;
                         return 1;
                     }
                     ret = GameLoop(ClientSocket, game);
@@ -143,7 +118,6 @@ int ClientThread(SOCKET ClientSocket)
                     printf("recv failed: %d\n", WSAGetLastError());
                     closesocket(ClientSocket);
                     delete[] recvbuf;
-                    //WSACleanup();
                     return 1;
                 }
             }
@@ -158,6 +132,7 @@ int ClientThread(SOCKET ClientSocket)
             }
 
             delete[] recvbuf;
+            closesocket(ClientSocket);
             break;
         }
         case 0x02: //BNFTP clients (v2)
@@ -174,8 +149,8 @@ int ClientThread(SOCKET ClientSocket)
                 if (temp == SOCKET_ERROR)
                 {
                     printf("FTP: Token send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
                 temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
@@ -188,8 +163,8 @@ int ClientThread(SOCKET ClientSocket)
                 else
                 {
                     printf("FTP: recv failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
                 char filename[temp-52];
@@ -268,8 +243,8 @@ int ClientThread(SOCKET ClientSocket)
                 if (temp == SOCKET_ERROR)
                 {
                     printf("FTP: Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
                 temp = send(ClientSocket, response1, sizeof(response1), 0);
@@ -277,22 +252,33 @@ int ClientThread(SOCKET ClientSocket)
                 if (temp == SOCKET_ERROR)
                 {
                     printf("FTP: Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
-                temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
+                /*temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
                 if (temp < 0)
-                    std::cout << "FTP: client closed the connection" << std::endl;
-                delete[] recvbuf;
+                    std::cout << "FTP: client closed the connection" << std::endl;*/
+                temp = shutdown(ClientSocket, SD_BOTH);
+                if (temp == SOCKET_ERROR)
+                {
+                    printf("FTP: shutdown failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf;
+                    closesocket(ClientSocket);
+                    return 1;
+                }
+                else
+                    std::cout << "FTP: closed the connection" << std::endl;
             }
             else
             {
                 printf("FTP: recv failed: %d\n", WSAGetLastError());
-                closesocket(ClientSocket);
                 delete[] recvbuf;
+                closesocket(ClientSocket);
                 return 1;
             }
+            delete[] recvbuf;
+            closesocket(ClientSocket);
             break;
         }
         case 0x03: //Telnet clients, shouldn't ever be accessed
@@ -300,6 +286,7 @@ int ClientThread(SOCKET ClientSocket)
         {
             delete[] recvbuf;
             ret = Telnet(ClientSocket);
+            closesocket(ClientSocket);
             if (ret != 0)
                 return ret;
             break;
@@ -308,11 +295,10 @@ int ClientThread(SOCKET ClientSocket)
         {
             std::cout << "Requested unsupported protocol: " << std::hex << (int)recvbuf[0] << std::dec << std::endl;
             delete[] recvbuf;
+            closesocket(ClientSocket);
             break;
         }
     }
-    closesocket(ClientSocket);
-    return 0;
 }
 int MTListenSocketThread(LPVOID pParam)
 {
