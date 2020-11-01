@@ -1,5 +1,6 @@
 *.log
 obj/
+.vs/
 *.depend
 *.layout
 *.cscope_file_list

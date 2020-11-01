@@ -1,8 +1,11 @@
+#ifndef HEADER_D83709141BED5503
+#define HEADER_D83709141BED5503
+
 //#include "Packets.h"
 thread_local int temp1;
 thread_local int temp2;
 thread_local bool split;
-thread_local char port[2] = {0xE0, 0x17}; //6112
+thread_local unsigned char port[2] = {0xE0u, 0x17u}; //6112
 thread_local unsigned char *recvbuf1 = new unsigned char[1024], *recvbuf2 = new unsigned char[1024];
 thread_local char *gamename = new char[32], *password = new char[32], *statstring = new char[160];
 thread_local unsigned char A[32];
@@ -18,10 +21,10 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
         game[i]=gamearg[i];
     do
     {
-        temp1 = recv(ClientSocket, recvbuf1, recvbuflen, 0);
+        temp1 = recv(ClientSocket, (char*)recvbuf1, recvbuflen, 0);
         if (temp1 > 0)
         {
-            packets.write(recvbuf1, temp1);
+            packets.write((char*)recvbuf1, temp1);
             packets << std::endl;
         }
         else if (temp1 == 0)
@@ -58,7 +61,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 for (int i=0; i<(temp1-(unsigned short)((recvbuf1[3] * 256) + recvbuf1[2]));i++)
                     recvbuf2[i]=recvbuf1[(unsigned short)((recvbuf1[3] * 256) + recvbuf1[2])+i];
                 packets << "Split packet: ";
-                packets.write(recvbuf2, temp1-(unsigned short)((recvbuf1[3] * 256) + recvbuf1[2]));
+                packets.write((char*)recvbuf2, temp1-(unsigned short)((recvbuf1[3] * 256) + recvbuf1[2]));
                 packets << std::endl;
                 temp2 = temp1-(unsigned short)((recvbuf1[3] * 256) + recvbuf1[2]);
                 temp1 = (unsigned short)((recvbuf1[3] * 256) + recvbuf1[2]);
@@ -105,11 +108,11 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                         char *ip = std::get<2>(games[pgame]).c_str();
                         DWORD ipi = inet_addr(ip);
                         unsigned int port = std::get<3>(games[pgame]);
-                        char SID_GETADVLISTEX[40+size1+size2+size3+3] = {
-                        0xFF, 0x09, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x00, 0x04, 0x00,
-                        0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                        unsigned char SID_GETADVLISTEX[40+size1+size2+size3+3] = {
+                        0xFFu, 0x09u, 0x00u, 0x00u, 0x01u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x09u, 0x00u, 0x04u, 0x00u,
+                        0x02u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
                                     /*^PORT  */ /*^IP address of host*/
-                        0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+                        0x11u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u};
                                                 /*^Elapsed seconds  */
                         for (int i=0;i<=size1;i++)
                             SID_GETADVLISTEX[40+i]=pgame[i];
@@ -126,7 +129,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                         SID_GETADVLISTEX[22] = ipi >> 16 & 0xFF;
                         SID_GETADVLISTEX[23] = ipi >> 24 & 0xFF;
                         //TODO: set host IP
-                        temp1 = send(ClientSocket, SID_GETADVLISTEX, sizeof(SID_GETADVLISTEX), 0);
+                        temp1 = send(ClientSocket, (char*)SID_GETADVLISTEX, sizeof(SID_GETADVLISTEX), 0);
                         if (temp1 == SOCKET_ERROR)
                         {
                             printf("Send failed: %d\n", WSAGetLastError());
@@ -141,9 +144,9 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                     }
                     else
                     {
-                        char SID_GETADVLISTEX[] = {
-                        0xFF, 0x09, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00};
-                        temp1 = send(ClientSocket, SID_GETADVLISTEX, sizeof(SID_GETADVLISTEX), 0);
+                        unsigned char SID_GETADVLISTEX[] = {
+                        0xFFu, 0x09u, 0x0Cu, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x01u, 0x00u, 0x00u, 0x00u};
+                        temp1 = send(ClientSocket, (char*)SID_GETADVLISTEX, sizeof(SID_GETADVLISTEX), 0);
                         if (temp1 == SOCKET_ERROR)
                         {
                             printf("Send failed: %d\n", WSAGetLastError());
@@ -162,7 +165,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                     unsigned int num = games.size();
                     num = std::min(num, (unsigned int)(recvbuf1[16] + (recvbuf1[17] << 8) +
                                                        (recvbuf1[18] << 16) + (recvbuf1[19] << 24)));
-                    char SID_GETADVLISTEX[] = {0xFF, 0x09,0x05,0x00}; //set size of 1 (just say 0 games)
+                    unsigned char SID_GETADVLISTEX[] = {0xFFu, 0x09u,0x05u,0x00u}; //set size of 1 (just say 0 games)
                     /*for (int i=0;i<num;i++)
                     {
                         games.at(num)
@@ -179,21 +182,21 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
             }
             case 0x0A: //SID_ENTERCHAT
             {
-                char SID_ENTERCHAT[2*lastusername[16]+9] = {0xFF, 0x0A};
+                unsigned char SID_ENTERCHAT[2*lastusername[16]+9] = {0xFFu, 0x0Au};
                 SID_ENTERCHAT[2] = 2*lastusername[16]+9       & 0xFF;
                 SID_ENTERCHAT[3] =(2*lastusername[16]+9 >> 8) & 0xFF;
-                for (int i=0;i<lastusername[16];i++)
+                for (int i = 0; i < lastusername[16]; i++)
                 {
                     SID_ENTERCHAT[4+i] = lastusername[i];
-                    SID_ENTERCHAT[lastusername[16]+9+i]= lastusername[i];
+                    SID_ENTERCHAT[lastusername[16]+9+i] = lastusername[i];
                 }
-                SID_ENTERCHAT[lastusername[16]+4]=game[3];
-                SID_ENTERCHAT[lastusername[16]+5]=game[2];
-                SID_ENTERCHAT[lastusername[16]+6]=game[1];
-                SID_ENTERCHAT[lastusername[16]+7]=game[0];
+                SID_ENTERCHAT[lastusername[16]+4] = game[3];
+                SID_ENTERCHAT[lastusername[16]+5] = game[2];
+                SID_ENTERCHAT[lastusername[16]+6] = game[1];
+                SID_ENTERCHAT[lastusername[16]+7] = game[0];
                 //SID_ENTERCHAT[lastusername[16]+8]=0x20;
                 //SID_ENTERCHAT[lastusername[16]+9]=0x30;
-                temp1 = send(ClientSocket, SID_ENTERCHAT, sizeof(SID_ENTERCHAT), 0);
+                temp1 = send(ClientSocket, (char*)SID_ENTERCHAT, sizeof(SID_ENTERCHAT), 0);
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
@@ -209,7 +212,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
             }
             case 0x0B: //SID_GETCHANNELLIST
             {
-                temp1 = send(ClientSocket, SID_GETCHANNELLIST.data(), SID_GETCHANNELLIST.size(), 0);
+                temp1 = send(ClientSocket, (char*)SID_GETCHANNELLIST.data(), SID_GETCHANNELLIST.size(), 0);
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
@@ -233,17 +236,17 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                     channel[i]=recvbuf1[8+i];
                 }
                 channel[31]=i;
-                char SID_CHATEVENT[28+lastusername[16]+channel[31]]={
-                    0xFF, 0x0F, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2a, 0x00, 0x00, 0x00,
-                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //+username and channelname
+                unsigned char SID_CHATEVENT[28+lastusername[16]+channel[31]]={
+                    0xFFu, 0x0Fu, 0x00u, 0x00u, 0x07u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x2au, 0x00u, 0x00u, 0x00u,
+                    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, //+username and channelname
                 };
                 SID_CHATEVENT[2] = 28+lastusername[16]+channel[31]       & 0xFF;
                 SID_CHATEVENT[3] =(28+lastusername[16]+channel[31] >> 8) & 0xFF;
-                for (i=0;i<lastusername[16];i++)
-                    SID_CHATEVENT[28+i]=lastusername[i];
-                for (i=0;i<channel[31];i++)
-                    SID_CHATEVENT[28+lastusername[16]+i]=channel[i];
-                temp1 = send(ClientSocket, SID_CHATEVENT, sizeof(SID_CHATEVENT), 0);
+                for (i = 0; i < lastusername[16]; i++)
+                    SID_CHATEVENT[28+i] = lastusername[i];
+                for (i = 0; i < channel[31]; i++)
+                    SID_CHATEVENT[28+lastusername[16]+i] = channel[i];
+                temp1 = send(ClientSocket, (char*)SID_CHATEVENT, sizeof(SID_CHATEVENT), 0);
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
@@ -268,11 +271,11 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
             case 0x15: //SID_CHECKAD
             {
                 //Ad001.bmp
-                char SID_CHECKAD[31] = {0xFF, 0x1F, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
-                'p', 'm', 'b', '.',  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                'A', 'd', '0', '0', '1', '.', 'b', 'm', 'p', 0x00, 0x00
+                unsigned char SID_CHECKAD[31] = {0xFFu, 0x1Fu, 0x00u, 0x00u, 0x01u, 0x00u, 0x00u, 0x00u,
+                'p', 'm', 'b', '.',  0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+                'A', 'd', '0', '0', '1', '.', 'b', 'm', 'p', 0x00u, 0x00u
                 }; //untested
-                temp1 = send(ClientSocket, SID_CHECKAD, sizeof(SID_CHECKAD), 0);
+                temp1 = send(ClientSocket, (char*)SID_CHECKAD, sizeof(SID_CHECKAD), 0);
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
@@ -325,7 +328,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 }
 
                 if(fail)
-                    temp1 = send(ClientSocket, SID_STARTADVEX3_FAIL, sizeof(SID_STARTADVEX3_FAIL), 0);
+                    temp1 = send(ClientSocket, (char*)SID_STARTADVEX3_FAIL, sizeof(SID_STARTADVEX3_FAIL), 0);
                 else
                 {
                     mtx.lock();
@@ -335,7 +338,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                                                                         std::string(buf, sizeof(buf)),
                                                                         (uint8_t)port[1] * 256 + (uint8_t)port[0]);
                     mtx.unlock();
-                    temp1 = send(ClientSocket, SID_STARTADVEX3, sizeof(SID_STARTADVEX3), 0);
+                    temp1 = send(ClientSocket, (char*)SID_STARTADVEX3, sizeof(SID_STARTADVEX3), 0);
                 }
                 if (temp1 == SOCKET_ERROR)
                 {
@@ -356,10 +359,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
             }
             case 0x2D: //SID_GETICONDATA
             {
-                char SID_GETICONDATA[] = {0xFF, 0x2D, 0x16, 0x00,
-                                        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //FILETIME
-                                        0x69, 0x63, 0x6F, 0x6E, 0x73, 0x2E, 0x62, 0x6E, 0x69, 0x00 //icons.bni
-                                        };
+                unsigned char SID_GETICONDATA[] = {
+                    0xFFu, 0x2Du, 0x16u, 0x00u,
+                    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, //FILETIME
+                    'i', 'c', 'o', 'n', 's', '.', 'b', 'n', 'i', 0x00u
+                    //0x69u, 0x63u, 0x6Fu, 0x6Eu, 0x73u, 0x2Eu, 0x62u, 0x6Eu, 0x69u, 0x00u //icons.bni
+                };
                 HANDLE file = CreateFile("icons.bni", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
                                           FILE_ATTRIBUTE_NORMAL, NULL);
                 FILETIME filetime;
@@ -373,7 +378,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 SID_GETICONDATA[6] = (filetime.dwLowDateTime >> 16) & 0xFF;
                 SID_GETICONDATA[5] = (filetime.dwLowDateTime >>  8) & 0xFF;
                 SID_GETICONDATA[4] =  filetime.dwLowDateTime        & 0xFF;
-                temp1 = send(ClientSocket, SID_GETICONDATA, sizeof(SID_GETICONDATA), 0);
+                temp1 = send(ClientSocket, (char*)SID_GETICONDATA, sizeof(SID_GETICONDATA), 0);
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
@@ -392,11 +397,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 char filename[temp1-12];
                 for (int i=0; i<temp1-12; i++)
                     filename[i] = recvbuf1[i+12];
-                char SID_GETFILETIME[20 + sizeof(filename)];
+                int filenamelen = sizeof(filename);
+                char SID_GETFILETIME[20 + filenamelen];
                 for (int i=0; i<8;i++)
                     SID_GETFILETIME[i]=recvbuf1[i];
-                SID_GETFILETIME[3] =((20 + sizeof(filename)) >> 8) & 0xFF;
-                SID_GETFILETIME[2] = (20 + sizeof(filename))       & 0xFF;
+                SID_GETFILETIME[3] =((20 + filenamelen) >> 8) & 0xFF;
+                SID_GETFILETIME[2] = (20 + filenamelen)       & 0xFF;
                 FILETIME filetime;
                 HANDLE file = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
                                           FILE_ATTRIBUTE_NORMAL, NULL);
@@ -410,7 +416,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 SID_GETFILETIME[14] = (filetime.dwLowDateTime >> 16) & 0xFF;
                 SID_GETFILETIME[13] = (filetime.dwLowDateTime >>  8) & 0xFF;
                 SID_GETFILETIME[12] =  filetime.dwLowDateTime        & 0xFF;
-                for (int i=0; i<sizeof(filename); i++)
+                for (int i = 0; i < filenamelen; i++)
                     SID_GETFILETIME[20+i] = filename[i];
                 temp1 = send(ClientSocket, SID_GETFILETIME, sizeof(SID_GETFILETIME), 0);
                 if (temp1 == SOCKET_ERROR)
@@ -433,12 +439,12 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 {
                     case 2:
                     {
-                        char SID_WARCRAFTGENERAL[11] = {0xFF, 0x44, 0x0B, 0x00, 0x02};
+                        unsigned char SID_WARCRAFTGENERAL[11] = {0xFFu, 0x44u, 0x0Bu, 0x00u, 0x02u};
                         SID_WARCRAFTGENERAL[5]=recvbuf1[5];
                         SID_WARCRAFTGENERAL[6]=recvbuf1[6];
                         SID_WARCRAFTGENERAL[7]=recvbuf1[7];
                         SID_WARCRAFTGENERAL[8]=recvbuf1[8];
-                        temp1 = send(ClientSocket, SID_WARCRAFTGENERAL, sizeof(SID_WARCRAFTGENERAL), 0);
+                        temp1 = send(ClientSocket, (char*)SID_WARCRAFTGENERAL, sizeof(SID_WARCRAFTGENERAL), 0);
                         if (temp1 == SOCKET_ERROR)
                         {
                             printf("Send failed: %d\n", WSAGetLastError());
@@ -454,13 +460,13 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                     }
                     case 7:
                     {
-                        char SID_WARCRAFTGENERAL[29] = {0xFF, 0x44, 0x1D, 0x00, 0x07};
+                        unsigned char SID_WARCRAFTGENERAL[29] = {0xFFu, 0x44u, 0x1Du, 0x00u, 0x07u};
                         SID_WARCRAFTGENERAL[5]=recvbuf1[5];
                         SID_WARCRAFTGENERAL[6]=recvbuf1[6];
                         SID_WARCRAFTGENERAL[7]=recvbuf1[7];
                         SID_WARCRAFTGENERAL[8]=recvbuf1[8];
                         //There should be a filetime for when the status was last changed
-                        temp1 = send(ClientSocket, SID_WARCRAFTGENERAL, sizeof(SID_WARCRAFTGENERAL), 0);
+                        temp1 = send(ClientSocket, (char*)SID_WARCRAFTGENERAL, sizeof(SID_WARCRAFTGENERAL), 0);
                         if (temp1 == SOCKET_ERROR)
                         {
                             printf("Send failed: %d\n", WSAGetLastError());
@@ -488,7 +494,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
             }
             case 0x46: //SID_NEWS_INFO
             {
-                temp1 = send(ClientSocket, SID_NEWS_INFO.data(), SID_NEWS_INFO.size(), 0);
+                temp1 = send(ClientSocket, (char*)SID_NEWS_INFO.data(), SID_NEWS_INFO.size(), 0);
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
@@ -516,7 +522,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 if(users.count(username))
                 {
                     std::cout << "account already exists\n";
-                    temp1 = send(ClientSocket, SID_AUTH_ACCOUNTCREATE_EXISTS, 8, 0);
+                    temp1 = send(ClientSocket, (char*)SID_AUTH_ACCOUNTCREATE_EXISTS, 8, 0);
                     std::cout << "Error sent\n";
                     if (temp1 == SOCKET_ERROR)
                     {
@@ -537,7 +543,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                                     (std::string(salt,32),std::string(verifier,32), std::string("",0));
                     std::cout << "Account created\n";
                     mtx.unlock();
-                    temp1 = send(ClientSocket, SID_AUTH_ACCOUNTCREATE, 8, 0);
+                    temp1 = send(ClientSocket, (char*)SID_AUTH_ACCOUNTCREATE, 8, 0);
                     if (temp1 == SOCKET_ERROR)
                     {
                         printf("Send failed: %d\n", WSAGetLastError());
@@ -565,8 +571,8 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
 
                 if (demo == 1)
                 {
-                    char SID_AUTH_ACCOUNTLOGONPROOF[28] = {0xFF, 0x54, 0x1C};
-                    temp1 = send(ClientSocket, SID_AUTH_ACCOUNTLOGONPROOF, 28, 0);
+                    unsigned char SID_AUTH_ACCOUNTLOGONPROOF[28] = {0xFFu, 0x54u, 0x1Cu};
+                    temp1 = send(ClientSocket, (char*)SID_AUTH_ACCOUNTLOGONPROOF, 28, 0);
                     if (temp1 == SOCKET_ERROR)
                     {
                         printf("Send failed: %d\n", WSAGetLastError());
@@ -580,7 +586,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                     }
                     break;
                 }
-                char SID_AUTH_ACCOUNTLOGON[72] = {0xFF, 0x53, 0x48};
+                unsigned char SID_AUTH_ACCOUNTLOGON[72] = {0xFFu, 0x53u, 0x48u};
 
                 if(users.count(username))
                 {
@@ -609,7 +615,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                     for (i=0;i<sizeof(username);i++)
                         lastusername[i]=username[i];
                     lastusername[16]=sizeof(username);
-                    temp1 = send(ClientSocket, SID_AUTH_ACCOUNTLOGON, 72, 0);
+                    temp1 = send(ClientSocket, (char*)SID_AUTH_ACCOUNTLOGON, 72, 0);
                     std::cout << "Confirmation sent\n";
                     if (temp1 == SOCKET_ERROR)
                     {
@@ -626,8 +632,8 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 }
                 else
                 {
-                    SID_AUTH_ACCOUNTLOGON[4]=0x01;
-                    temp1 = send(ClientSocket, SID_AUTH_ACCOUNTLOGON, 72, 0);
+                    SID_AUTH_ACCOUNTLOGON[4] = 0x01;
+                    temp1 = send(ClientSocket, (char*)SID_AUTH_ACCOUNTLOGON, 72, 0);
                     std::cout << "Account doesn't exist\n";
                     if (temp1 == SOCKET_ERROR)
                     {
@@ -648,13 +654,13 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
             {
                 std::cout << "Login proof request with proof:\n";
                 char tempname[lastusername[16]];
-                for (int i=0; i<lastusername[16];i++)
+                for (int i = 0; i < lastusername[16]; i++)
                     tempname[i] = lastusername[i];
                 char cProof[20];
-                for (int i=0;i<20;i++)
+                for (int i = 0; i < 20; i++)
                     cProof[i]=recvbuf1[4+i];
                 mp::uint256_t cPi=0;
-                for (int i=0;i<20;i++)
+                for (int i = 0; i < 20; i++)
                 {
                     cPi *= 256;
                     cPi += (cProof[i] & 0xFF); //this or 19-i?
@@ -710,7 +716,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
 
                 char tmp[20], tmp1[20], tmp2[176];
                 char gch[1] = {0x2F};
-                SHA1(gch, 1, temp);
+                SHA1((unsigned char*)gch, 1, temp);
                 for (int i = 0;i<20;i++)
                     tmp[i] = temp[19-i];
                 SHA1(Nch, sizeof(Nch), temp);
@@ -722,7 +728,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 char usrnmUC[lastusername[16]];
                 for (int i=0;i<lastusername[16];i++)
                     usrnmUC[i] = toupper(lastusername[i]);
-                SHA1(usrnmUC, lastusername[16], temp);
+                SHA1((unsigned char*)usrnmUC, lastusername[16], temp);
                 for (int i=0;i<20;i++)
                     tmp1[i] = temp[19-i];
                 char salt[32];
@@ -754,7 +760,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 for (int i=0; i<20; i++)
                     tmp2[156+i]=tmp[i];*/
 
-                SHA1(tmp2, 176, temp);
+                SHA1((unsigned char*)tmp2, 176, temp);
                 mp::uint256_t cPi2 = 0;
                 for (int i=0;i<20;i++)
                 {
@@ -763,7 +769,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 }
                 std::cout << "Server's calculation of M1: " << std::hex << cPi2 << std::dec << std::endl;
 
-                char SID_AUTH_ACCOUNTLOGONPROOF[28] = {0xFF, 0x54, 0x1C, 0x00, 0x00};//(cPi!=cPi2?2:0)
+                unsigned char SID_AUTH_ACCOUNTLOGONPROOF[28] = {0xFFu, 0x54u, 0x1Cu, 0x00u, 0x00u};//(cPi!=cPi2?2:0)
                 if (std::get<2>(users[tempname]) == "")
                 {
                     if (SID_AUTH_ACCOUNTLOGONPROOF[4]==0)
@@ -795,7 +801,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                     M2 += (sProof[i] & 0xFF); //is it like this or 19-i? Probably this
                 }
                 std::cout << "M2 calculated to: " << std::hex << M2 << std::dec << std::endl;
-                temp1 = send(ClientSocket, SID_AUTH_ACCOUNTLOGONPROOF, 28, 0);
+                temp1 = send(ClientSocket, (char*)SID_AUTH_ACCOUNTLOGONPROOF, 28, 0);
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
@@ -810,7 +816,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 std::cout << "Bytes of confirmation sent: " << temp1 << std::endl;
                 if (setmail)
                 {
-                    temp1 = send(ClientSocket, SID_SETEMAIL, 4, 0);
+                    temp1 = send(ClientSocket, (char*)SID_SETEMAIL, 4, 0);
                     if (temp1 == SOCKET_ERROR)
                     {
                         printf("Send failed: %d\n", WSAGetLastError());
@@ -850,13 +856,13 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
                 game[2] = recvbuf1[5];
                 game[3] = recvbuf1[4];
                 std::cout << "Client demanded game to be changed to: " << game << std::endl;
-                std::cout.write(recvbuf1, sizeof(recvbuf1));
+                std::cout.write((char*)recvbuf1, sizeof(recvbuf1));
                 std::cout << "\n";
                 break;
             }
             case 0x65: //SID_FRIENDSLIST
             {
-                temp1 = send(ClientSocket, SID_FRIENDLIST.data(), SID_FRIENDLIST.size(), 0);
+                temp1 = send(ClientSocket, (char*)SID_FRIENDLIST.data(), SID_FRIENDLIST.size(), 0);
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
@@ -872,7 +878,7 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
             }
             case 0x7D: //SID_CLANMEMBERLIST
             {
-                temp1 = send(ClientSocket, SID_CLANMEMBERLIST.data(), SID_CLANMEMBERLIST.size(), 0);
+                temp1 = send(ClientSocket, (char*)SID_CLANMEMBERLIST.data(), SID_CLANMEMBERLIST.size(), 0);
                 if (temp1 == SOCKET_ERROR)
                 {
                     printf("Send failed: %d\n", WSAGetLastError());
@@ -900,7 +906,8 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
             temp1 = temp2;
             goto process;
         }
-    } while(temp1 > 0);
+    } //while(temp1 > 0);
+    while (true);
     delete[] recvbuf1;
     delete[] recvbuf2;
     delete[] gamename;
@@ -916,3 +923,4 @@ int GameLoop(SOCKET ClientSocket, char *gamearg)
     closesocket(ClientSocket);
     return 0;
 }
+#endif // header guard

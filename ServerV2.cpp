@@ -1,5 +1,6 @@
 #include "stdafx.h"
-int temp = 0,quit = 0, ret = 0;
+int quit = 0, ret = 0;
+thread_local int temp = 0;
 WSADATA data;
 SOCKET ListenSocket = INVALID_SOCKET;
 struct addrinfo *result = NULL, *ptr = NULL, hints;
@@ -11,7 +12,7 @@ int ClientThread(SOCKET ClientSocket)
     unsigned char *recvbuf = new unsigned char[1024];
     //extern char *PORT;
     printf("Client connected.\n");
-    temp = recv(ClientSocket, recvbuf, 1, 0);
+    temp = recv(ClientSocket, (char*)recvbuf, 1, 0);
     if (temp > 0)
     {
         printf("Mode received: ");
@@ -28,10 +29,10 @@ int ClientThread(SOCKET ClientSocket)
         case 0x01:
         {
             std::cout << "Game\n";
-            temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
+            temp = recv(ClientSocket, (char*)recvbuf, recvbuflen, 0);
             if (temp > 0)
             {
-                packets.write(recvbuf, temp);
+                packets.write((char*)recvbuf, temp);
                 packets << std::endl;
                 game[0] = recvbuf[15];
                 game[1] = recvbuf[14];
@@ -47,7 +48,7 @@ int ClientThread(SOCKET ClientSocket)
                 return 1;
             }
 
-            temp = send(ClientSocket, SID_PING_DATA.data(), SID_PING_DATA.size(), 0);
+            temp = send(ClientSocket, (char*)SID_PING_DATA.data(), SID_PING_DATA.size(), 0);
             if (temp == SOCKET_ERROR)
             {
                 printf("send failed: %d\n", WSAGetLastError());
@@ -56,7 +57,7 @@ int ClientThread(SOCKET ClientSocket)
                 return 1;
             }
             timer.start();
-            temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
+            temp = recv(ClientSocket, (char*)recvbuf, recvbuflen, 0);
             if (temp > 0)
             {
                 timer.stop();
@@ -68,23 +69,23 @@ int ClientThread(SOCKET ClientSocket)
                     if(verbyte == 0xD2)
                     {
                         std::cout << "Beta 1.34 detected.\n";
-                        temp = send(ClientSocket, SID_AUTH_INFO_W3BETA.data(), SID_AUTH_INFO_W3BETA.size(), 0);
+                        temp = send(ClientSocket, (char*)SID_AUTH_INFO_W3BETA.data(), SID_AUTH_INFO_W3BETA.size(), 0);
                         nls = 1;
                     }
                     else
                     {
                         std::cout << "Client version byte is 0x" << std::hex << (int)recvbuf[16] << std::dec << std::endl;
-                        temp = send(ClientSocket, SID_AUTH_INFO.data(), SID_AUTH_INFO.size(), 0);
+                        temp = send(ClientSocket, (char*)SID_AUTH_INFO.data(), SID_AUTH_INFO.size(), 0);
                     }
                 }
                 else if(strncmp("W3DM", game, 4) == 0)
                 {
-                    temp = send(ClientSocket, SID_AUTH_INFO_W3DEMO.data(), SID_AUTH_INFO_W3DEMO.size(), 0);
+                    temp = send(ClientSocket, (char*)SID_AUTH_INFO_W3DEMO.data(), SID_AUTH_INFO_W3DEMO.size(), 0);
                     demo = 1;
                 }
                 else
                 {
-                    temp = send(ClientSocket, SID_AUTH_INFO_NOTW3.data(), SID_AUTH_INFO_NOTW3.size(), 0);
+                    temp = send(ClientSocket, (char*)SID_AUTH_INFO_NOTW3.data(), SID_AUTH_INFO_NOTW3.size(), 0);
                 }
                 if (temp == SOCKET_ERROR)
                 {
@@ -93,13 +94,13 @@ int ClientThread(SOCKET ClientSocket)
                     delete[] recvbuf;
                     return 1;
                 }
-                temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
+                temp = recv(ClientSocket, (char*)recvbuf, recvbuflen, 0);
                 if (temp > 0)
                 {
-                    packets.write(recvbuf, temp);
+                    packets.write((char*)recvbuf, temp);
                     packets << std::endl;
 
-                    temp = send(ClientSocket, SID_AUTH_CHECK, sizeof(SID_AUTH_CHECK), 0);
+                    temp = send(ClientSocket, (char*)SID_AUTH_CHECK, sizeof(SID_AUTH_CHECK), 0);
                     if (temp == SOCKET_ERROR)
                     {
                         printf("send failed: %d\n", WSAGetLastError());
@@ -138,13 +139,13 @@ int ClientThread(SOCKET ClientSocket)
         case 0x02: //BNFTP clients (v2)
         {
             std::cout << "FTP\n";
-            temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
+            temp = recv(ClientSocket, (char*)recvbuf, recvbuflen, 0);
             if (temp > 0)
             {
                 printf("FTP: bytes received: %d\n", temp);
-                packets.write(recvbuf, temp);
+                packets.write((char*)recvbuf, temp);
                 packets << std::endl;
-                temp = send(ClientSocket, SERVER_TOKEN, sizeof(SERVER_TOKEN), 0);
+                temp = send(ClientSocket, (char*)SERVER_TOKEN, sizeof(SERVER_TOKEN), 0);
                 printf("FTP: Token sent\n");
                 if (temp == SOCKET_ERROR)
                 {
@@ -153,11 +154,11 @@ int ClientThread(SOCKET ClientSocket)
                     closesocket(ClientSocket);
                     return 1;
                 }
-                temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
+                temp = recv(ClientSocket, (char*)recvbuf, recvbuflen, 0);
                 if (temp > 0)
                 {
                     printf("FTP: Bytes received: %d\n", temp);
-                    packets.write(recvbuf, temp);
+                    packets.write((char*)recvbuf, temp);
                     packets << std::endl;
                 }
                 else
@@ -187,7 +188,8 @@ int ClientThread(SOCKET ClientSocket)
                     break;
                 }
                 file.close();
-                char response_template[20 + sizeof(filename)] = {0};
+                int filenamelen = sizeof(filename);
+                char response_template[20 + filenamelen] = {0};
                                                         /*no header length
                                             0, 0, 0, 0,
                                             0, 0, 0, 0,
@@ -199,7 +201,7 @@ int ClientThread(SOCKET ClientSocket)
                 response_template[2] = (fsize >> 16) & 0xFF;
                 response_template[1] = (fsize >>  8) & 0xFF;
                 response_template[0] =  fsize        & 0xFF;
-                for (i=0;i<sizeof(filename);i++)
+                for (i = 0; i < filenamelen; i++)
                 {
                     response_template[20+i]=filename[i];
                 }
@@ -224,17 +226,17 @@ int ClientThread(SOCKET ClientSocket)
                                           //Filename here
                                           0}; //file here*/
 
-                char response[sizeof(response_template) + 4];
-                response[3] = ((4 + sizeof(response_template)) >> 24) & 0xFF;
-                response[2] = ((4 + sizeof(response_template)) >> 16) & 0xFF;
-                response[1] = ((4 + sizeof(response_template)) >>  8) & 0xFF;
-                response[0] =  (4 + sizeof(response_template))        & 0xFF;
-                for (i=0;i<sizeof(response_template);i++)
+                char response[24 + filenamelen];
+                response[3] = ((24 + filenamelen) >> 24) & 0xFF;
+                response[2] = ((24 + filenamelen) >> 16) & 0xFF;
+                response[1] = ((24 + filenamelen) >>  8) & 0xFF;
+                response[0] =  (24 + filenamelen)        & 0xFF;
+                for (i = 0; i < 20 + filenamelen; i++)
                 {
                     response[i + 4] = response_template[i];
                 }
-                char response1 [fsize];
-                for (i=0;i<fsize;i++)
+                char response1[fsize];
+                for (i = 0; i < fsize; i++)
                 {
                     response1[i] = fdata[i];
                 }
@@ -299,6 +301,7 @@ int ClientThread(SOCKET ClientSocket)
             break;
         }
     }
+    return 0;
 }
 int MTListenSocketThread(LPVOID pParam)
 {

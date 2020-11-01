@@ -14,7 +14,6 @@
 				<Option projectCompilerOptionsRelation="1" />
 				<Compiler>
 					<Add option="-O3" />
-					<Add option="-w" />
 					<Add option="-std=c++2a" />
 					<Add option="-fpermissive" />
 				</Compiler>
@@ -33,9 +32,6 @@
 		<Unit filename="stdafx.h" />
 		<Unit filename="uint_math.h" />
 		<Extensions>
-			<code_completion />
-			<envvars />
-			<debugger />
 			<lib_finder disable_auto="1" />
 		</Extensions>
 	</Project>

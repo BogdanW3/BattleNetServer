@@ -1,3 +1,6 @@
+#ifndef HEADER_49B89A38D3B43576
+#define HEADER_49B89A38D3B43576
+
 #include <iostream>
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -6,6 +9,7 @@
 #include <synchapi.h>
 #include <chrono>
 #include <map>
+#include <tuple>
 #include <openssl/sha.h>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <ctype.h>
@@ -14,8 +18,8 @@
 
 namespace mp = boost::multiprecision;
 using namespace mp::literals;
-std::map<std::string,std::tuple<std::string, std::string, std::string>> users;
-std::map<std::string,std::tuple<std::string, std::string, std::string, unsigned int>> games; //pass, gamestat, host IP and port(it's in reverse order)
+std::map<std::string, std::tuple<std::string, std::string, std::string>> users;
+std::map<std::string, std::tuple<std::string, std::string, std::string, unsigned int>> games; //pass, gamestat, host IP and port(it's in reverse order)
 std::ofstream packets("E:\\Packets", std::ios::binary);
 std::mutex mtx;
 unsigned int recvbuflen = 1024;
@@ -35,3 +39,4 @@ unsigned char Nch[] = {0x87, 0xC7, 0x23, 0x85, 0x65, 0xF6, 0x16, 0x12, 0xD9, 0x1
 #include "MainGameLoop.h"
 #include "Timer.h"
 #include "Telnet.h"
+#endif // header guard 
