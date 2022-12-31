@@ -1,14 +1,16 @@
+#include <string.h>
+
 int Telnet(SOCKET ClientSocket)
 {
-    char recvbuf[1024];
+    thread_local char *recvbuf = new char[1024];
     int recvbuflen = 1024;
     std::ofstream packets("E:\\Packets", std::ios::binary);
     int temp = 0;
-    char *tempbuf, *username, *password;
-    int i=0, last=0, loggedin = 0, nameentered = 0;
+    thread_local char *tempbuf = new char[256], * username, * password;
+    int i = 0, j = 0, loggedin = 0, nameentered = 0;
     for(;;)
     {
-        if (i=temp)
+        if (i >= temp)
         {
             temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
             if (temp > 0)
@@ -16,44 +18,43 @@ int Telnet(SOCKET ClientSocket)
                 printf("Bytes received: %d\n", temp);
                 packets.write(recvbuf, temp);
                 packets << std::endl;
-                last = 0;
                 i = 0;
-                for (i;i<temp;i++)
-                {
-                    if(recvbuf[i]='\r')
-                        if(recvbuf[i+1]='\n')
-                        {
-                            for(int j=0;j<i-last-1;j++)
-                                tempbuf[j]=recvbuf[i-1];
-                            last = i;
-                            break;
-                        }
-                }
             }
             else if (temp == 0)
+            {
                 std::cout << "Connection Closing\n";
+                delete[] recvbuf;
+                delete[] tempbuf;
+                return 0;
+            }
             else
             {
                 printf("recv failed: %d\n", WSAGetLastError());
                 closesocket(ClientSocket);
+                delete[] recvbuf;
+                delete[] tempbuf;
                 return 1;
             }
         }
-        else
+        j = i;
+        for (; j < temp; j++)
         {
-            for (i;i<temp;i++)
-            {
-                if(recvbuf[i]='\r')
-                    if(recvbuf[i+1]='\n')
-                    {
-                        for(int j=0;j<i-last-1;j++)
-                            tempbuf[j]=recvbuf[i-1];
-                        last = i;
-                        break;
-                    }
-            }
+            if (recvbuf[j] == '\r')
+                if (recvbuf[j + 1] == '\n')
+                {
+                    for (int k = 0; k < j; k++)
+                        tempbuf[k] = recvbuf[i + k];
+                    tempbuf[j] = '\0';
+                    i = j + 2;
+                    break;
+                }
         }
-        packets.write(tempbuf, sizeof(tempbuf));
+        if (j == temp) // couldn't find \r\n
+            for (int k = 0; k < temp; k++)
+                tempbuf[k] = recvbuf[k]; //backup, should only occur on special stuff
+
+        printf("Parsing line up to index: %d\n", i);
+        packets.write(tempbuf, j);
         packets << std::endl;
         switch(tempbuf[0])
         {
@@ -69,103 +70,75 @@ int Telnet(SOCKET ClientSocket)
                         printf("Send failed: %d\n", WSAGetLastError());
                         closesocket(ClientSocket);
                         //WSACleanup();
+                        delete[] recvbuf;
+                        delete[] tempbuf;
                         return 1;
                     }
                     std::cout << "Bytes sent: " << temp << std::endl;
-                    {if (i=temp)
+                    temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
+                    if (temp > 0)
                     {
-                        temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
-                        if (temp > 0)
+                        printf("Bytes received: %d\n", temp);
+                        packets.write(recvbuf, temp);
+                        packets << std::endl;
+
+                        j = i;
+                        for (; j < temp; j++)
                         {
-                            printf("Bytes received: %d\n", temp);
-                            packets.write(recvbuf, temp);
-                            packets << std::endl;
-                            last = 0;
-                            i = 0;
-                            for (i;i<temp;i++)
-                            {
-                                if(recvbuf[i]='\r')
-                                    if(recvbuf[i+1]='\n')
-                                    {
-                                        for(int j=0;j<i-last-1;j++)
-                                            tempbuf[j]=recvbuf[i-1];
-                                        last = i;
-                                        break;
-                                    }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        for (i;i<temp;i++)
-                        {
-                            if(recvbuf[i]='\r')
-                                if(recvbuf[i+1]='\n')
+                            if (recvbuf[j] == '\r')
+                                if (recvbuf[j + 1] == '\n')
                                 {
-                                    for(int j=0;j<i-last-1;j++)
-                                        tempbuf[j]=recvbuf[i-1];
-                                    last = i;
+                                    for (int k = 0; k < j; k++)
+                                        tempbuf[k] = recvbuf[i + k];
+                                    tempbuf[j] = '\0';
+                                    i = j + 2;
                                     break;
                                 }
                         }
                     }
-                    packets.write(tempbuf, sizeof(tempbuf));
-                    packets << std::endl;}
-                    username=tempbuf;
-                    char userreply[sizeof(username) + 10] = "Username: ";
-                    for (int z = 0;z < sizeof(username); z++)
-                        userreply[z+10]=username[z];
-                    temp = send(ClientSocket, userreply, sizeof(userreply), 0);
+                    packets.write(tempbuf, j);
+                    packets << std::endl;
+                    username = tempbuf;
+                    char userreply[26] = "Username: ";
+                    for (int z = 0; z < strlen(username); z++)
+                        userreply[z + 10]=username[z];
+                    temp = send(ClientSocket, userreply, static_cast<int>(strlen(username)) + 10, 0);
                     std::cout << "Username reply sent\n";
                     if (temp == SOCKET_ERROR)
                     {
                         printf("Send failed: %d\n", WSAGetLastError());
                         closesocket(ClientSocket);
                         //WSACleanup();
+                        delete[] recvbuf;
+                        delete[] tempbuf;
                         return 1;
                     }
-                    std::cout << "Bytes sent: " << temp << std::endl;
+                    std::cout << "Bytes of reply sent: " << temp << std::endl;
 
-                    {if (i=temp)
+                    temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
+                    if (temp > 0)
                     {
-                        temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
-                        if (temp > 0)
+                        printf("Bytes received: %d\n", temp);
+                        packets.write(recvbuf, temp);
+                        packets << std::endl;
+
+                        j = i;
+                        for (; j < temp; j++)
                         {
-                            printf("Bytes received: %d\n", temp);
-                            packets.write(recvbuf, temp);
-                            packets << std::endl;
-                            last = 0;
-                            i = 0;
-                            for (i;i<temp;i++)
-                            {
-                                if(recvbuf[i]='\r')
-                                    if(recvbuf[i+1]='\n')
-                                    {
-                                        for(int j=0;j<i-last-1;j++)
-                                            tempbuf[j]=recvbuf[i-1];
-                                        last = i;
-                                        break;
-                                    }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        for (i;i<temp;i++)
-                        {
-                            if(recvbuf[i]='\r')
-                                if(recvbuf[i+1]='\n')
+                            if (recvbuf[j] == '\r')
+                                if (recvbuf[j + 1] == '\n')
                                 {
-                                    for(int j=0;j<i-last-1;j++)
-                                        tempbuf[j]=recvbuf[i-1];
-                                    last = i;
+                                    for (int k = 0; k < j; k++)
+                                        tempbuf[k] = recvbuf[i + k];
+                                    tempbuf[j] = '\0';
+                                    i = j + 2;
                                     break;
                                 }
                         }
                     }
-                    packets.write(tempbuf, sizeof(tempbuf));
-                    packets << std::endl;}
-                    password=tempbuf;
+                    packets.write(tempbuf, j);
+                    packets << std::endl;
+                    password = tempbuf;
                     temp = send(ClientSocket, "Password:", 9, 0);
                     std::cout << "Password reply sent\n";
                     if (temp == SOCKET_ERROR)
@@ -173,6 +146,8 @@ int Telnet(SOCKET ClientSocket)
                         printf("Send failed: %d\n", WSAGetLastError());
                         closesocket(ClientSocket);
                         //WSACleanup();
+                        delete[] recvbuf;
+                        delete[] tempbuf;
                         return 1;
                     }
                     std::cout << "Bytes sent: " << temp << std::endl;
@@ -187,6 +162,8 @@ int Telnet(SOCKET ClientSocket)
                             printf("Send failed: %d\n", WSAGetLastError());
                             closesocket(ClientSocket);
                             //WSACleanup();
+                            delete[] recvbuf;
+                            delete[] tempbuf;
                             return 1;
                         }
                     }

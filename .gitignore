@@ -4,3 +4,8 @@ obj/
 *.layout
 *.cscope_file_list
 *.exe
+.vs/
+packages/
+packages.config
+x64/
+libcrypto*dll

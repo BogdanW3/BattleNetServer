@@ -6,6 +6,7 @@
 #include <synchapi.h>
 #include <chrono>
 #include <map>
+#include <list>
 #include <openssl/sha.h>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <ctype.h>
@@ -16,6 +17,7 @@ namespace mp = boost::multiprecision;
 using namespace mp::literals;
 std::map<std::string,std::tuple<std::string, std::string, std::string>> users;
 std::map<std::string,std::tuple<std::string, std::string, std::string, unsigned int>> games; //pass, gamestat, host IP and port(it's in reverse order)
+std::map<std::string, std::list<std::string>> channels;
 std::ofstream packets("E:\\Packets", std::ios::binary);
 std::mutex mtx;
 unsigned int recvbuflen = 1024;

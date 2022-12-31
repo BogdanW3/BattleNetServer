@@ -13,7 +13,7 @@ public:
         m_bRunning = false;
     }
 
-    double elapsedMilliseconds()
+    long long elapsedMilliseconds()
     {
         std::chrono::time_point<std::chrono::system_clock> endTime;
 

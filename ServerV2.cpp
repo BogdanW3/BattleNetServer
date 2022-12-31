@@ -4,11 +4,11 @@ WSADATA data;
 SOCKET ListenSocket = INVALID_SOCKET;
 struct addrinfo *result = NULL, *ptr = NULL, hints;
 Timer timer;
-char *bind_port = "6112";
+const char* bind_port = "6112";
 int ClientThread(SOCKET ClientSocket)
 {
-    char game[4];
-    unsigned char *recvbuf = new unsigned char[1024];
+    char *game = new char[5] {0};
+    char *recvbuf = new char[1024];
     //extern char *PORT;
     printf("Client connected.\n");
     temp = recv(ClientSocket, recvbuf, 1, 0);
@@ -19,9 +19,11 @@ int ClientThread(SOCKET ClientSocket)
     else
     {
         printf("recv failed: %d\n", WSAGetLastError());
+        delete[] recvbuf;
         closesocket(ClientSocket);
         return 1;
     }
+
     switch (recvbuf[0]) //Authentication and mode choice
     {
         case 0x01:
@@ -70,12 +72,12 @@ int ClientThread(SOCKET ClientSocket)
                     return 1;
                 }
             }*/
-            temp = send(ClientSocket, SID_PING_DATA.data(), SID_PING_DATA.size(), 0);
+            temp = send(ClientSocket, SID_PING_DATA.data(), static_cast<int>(SID_PING_DATA.size()), 0);
             if (temp == SOCKET_ERROR)
             {
                 printf("send failed: %d\n", WSAGetLastError());
+                delete[] recvbuf;
                 closesocket(ClientSocket);
-                //WSACleanup();
                 return 1;
             }
             timer.start();
@@ -83,37 +85,37 @@ int ClientThread(SOCKET ClientSocket)
             if (temp > 0)
             {
                 timer.stop();
-                int time = timer.elapsedMilliseconds();
+                long long time = timer.elapsedMilliseconds();
                 std::cout << "Ping is " << time << "ms\n";
                 verbyte = recvbuf[16] & 0xFF;
-                if((strcmp("W3XP", game) == 0) || (strcmp("WAR3", game) == 0))
+                if ((strncmp("W3XP", game, 4) == 0) || (strncmp("WAR3", game, 4) == 0))
                 {
                     if(verbyte == 0xD2)
                     {
                         std::cout << "Beta 1.34 detected.\n";
-                        temp = send(ClientSocket, SID_AUTH_INFO_W3BETA.data(), SID_AUTH_INFO_W3BETA.size(), 0);
+                        temp = send(ClientSocket, SID_AUTH_INFO_W3BETA.data(), static_cast<int>(SID_AUTH_INFO_W3BETA.size()), 0);
                         nls = 1;
                     }
                     else
                     {
                         std::cout << "Client version byte is 0x" << std::hex << (int)recvbuf[16] << std::dec << std::endl;
-                        temp = send(ClientSocket, SID_AUTH_INFO.data(), SID_AUTH_INFO.size(), 0);
+                        temp = send(ClientSocket, SID_AUTH_INFO.data(), static_cast<int>(SID_AUTH_INFO.size()), 0);
                     }
                 }
-                else if(strcmp("W3DM", game) == 0)
+                else if(strncmp("W3DM", game, 4) == 0)
                 {
-                    temp = send(ClientSocket, SID_AUTH_INFO_W3DEMO.data(), SID_AUTH_INFO_W3DEMO.size(), 0);
+                    temp = send(ClientSocket, SID_AUTH_INFO_W3DEMO.data(), static_cast<int>(SID_AUTH_INFO_W3DEMO.size()), 0);
                     demo = 1;
                 }
                 else
                 {
-                    temp = send(ClientSocket, SID_AUTH_INFO_NOTW3.data(), SID_AUTH_INFO_NOTW3.size(), 0);
+                    temp = send(ClientSocket, SID_AUTH_INFO_NOTW3.data(), static_cast<int>(SID_AUTH_INFO_NOTW3.size()), 0);
                 }
                 if (temp == SOCKET_ERROR)
                 {
                     printf("send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
                 temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
@@ -122,14 +124,12 @@ int ClientThread(SOCKET ClientSocket)
                     packets.write(recvbuf, temp);
                     packets << std::endl;
 
-                    delete[] recvbuf;
-
                     temp = send(ClientSocket, SID_AUTH_CHECK, sizeof(SID_AUTH_CHECK), 0);
                     if (temp == SOCKET_ERROR)
                     {
                         printf("send failed: %d\n", WSAGetLastError());
+                        delete[] recvbuf;
                         closesocket(ClientSocket);
-                        //WSACleanup();
                         return 1;
                     }
                     ret = GameLoop(ClientSocket, game);
@@ -141,9 +141,8 @@ int ClientThread(SOCKET ClientSocket)
                 else
                 {
                     printf("recv failed: %d\n", WSAGetLastError());
-                    closesocket(ClientSocket);
                     delete[] recvbuf;
-                    //WSACleanup();
+                    closesocket(ClientSocket);
                     return 1;
                 }
             }
@@ -156,8 +155,8 @@ int ClientThread(SOCKET ClientSocket)
                 delete[] recvbuf;
                 return 1;
             }
-
             delete[] recvbuf;
+            closesocket(ClientSocket);
             break;
         }
         case 0x02: //BNFTP clients (v2)
@@ -174,8 +173,8 @@ int ClientThread(SOCKET ClientSocket)
                 if (temp == SOCKET_ERROR)
                 {
                     printf("FTP: Token send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
                 temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
@@ -188,31 +187,40 @@ int ClientThread(SOCKET ClientSocket)
                 else
                 {
                     printf("FTP: recv failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
-                char filename[temp-52];
-                int i;
-                for (i=52;i<temp;i++)
-                    filename[i-52] = recvbuf[i];
+                char* filename = new char[temp - 52u]{0};
+                for (int j = 52; j < temp; j++)
+                    filename[j-52] = recvbuf[j];
                 std::cout << "Client requested file: " << filename << std::endl;
-                std::ifstream file(filename, std::ios::binary);
-                char fdata[32*1024];
-                file.seekg(((recvbuf[0]*32+recvbuf[1])*32+recvbuf[2])*32+recvbuf[3]);
-                if ((((recvbuf[0]*32+recvbuf[1])*32+recvbuf[2])*32+recvbuf[3])!=0)
-                    std::cout<<"Starting point set at "<<((recvbuf[0]*32+recvbuf[1])*32+recvbuf[2])*32+recvbuf[3]<<std::endl;
-                int fsize = file.readsome(fdata, sizeof(fdata));
-                std::cout << "Size of file is: " << fsize << std::endl;
-                if(!file.good())
-                {
-                    std::cout << "bad file: " << filename << std::endl;
-                    closesocket(ClientSocket);
-                    file.close();
-                    break;
+
+                FILETIME filetime;
+                HANDLE filems = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+                    FILE_ATTRIBUTE_NORMAL, NULL);
+                GetFileTime(filems, NULL, NULL, &filetime);
+                DWORD fsize = GetFileSize(filems, NULL);
+                std::cout << "Filesize: " << fsize << '\n';
+                char* fdata = new char[fsize];
+                DWORD fsize2;
+                if (ReadFile(filems, fdata, fsize, &fsize2, nullptr) != TRUE)
+                    std::cout << "Error reading file " << filename << ": " << GetLastError() << "\n";
+                if (fsize != fsize2)
+                    std::cout << "Size mismatch: filesize2: " << fsize2 << '\n';
+
+                uint64_t offset = (((uint64_t)recvbuf[0] * 32 + (uint64_t)recvbuf[1]) * 32
+                                    + (uint64_t)recvbuf[2]) * 32 + (uint64_t)recvbuf[3];
+                if (offset != 0)
+                { 
+                    std::cout<<"Starting point set at " << offset << std::endl;
+                    //file.seekg(((((uint64_t)recvbuf[0])*32+ ((uint64_t)recvbuf[1]))*32+ ((uint64_t)recvbuf[2]))*32+ ((uint64_t)recvbuf[3]));
+                    LARGE_INTEGER a;
+                    a.QuadPart = (long long)offset;
+                    SetFilePointerEx(filems, a, nullptr, FILE_BEGIN);
                 }
-                file.close();
-                char response_template[20 + sizeof(filename)] = {0};
+
+                char *response_template = new char[21 + strlen(filename)]{0}; //+1 for cstring
                                                         /*no header length
                                             0, 0, 0, 0,
                                             0, 0, 0, 0,
@@ -224,22 +232,20 @@ int ClientThread(SOCKET ClientSocket)
                 response_template[2] = (fsize >> 16) & 0xFF;
                 response_template[1] = (fsize >>  8) & 0xFF;
                 response_template[0] =  fsize        & 0xFF;
-                for (i=0;i<sizeof(filename);i++)
+                unsigned int i;
+                for (i = 0; i < strlen(filename); i++)
                 {
-                    response_template[20+i]=filename[i];
+                    response_template[20+i] = filename[i];
                 }
-                FILETIME filetime;
-                HANDLE filems = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
-                                          FILE_ATTRIBUTE_NORMAL, NULL);
-                GetFileTime(filems, NULL, NULL, &filetime);
+               
                 response_template[19] = (filetime.dwHighDateTime >> 24) & 0xFF;
                 response_template[18] = (filetime.dwHighDateTime >> 16) & 0xFF;
                 response_template[17] = (filetime.dwHighDateTime >>  8) & 0xFF;
                 response_template[16] =  filetime.dwHighDateTime        & 0xFF;
-                response_template[15] = (filetime.dwLowDateTime >> 24) & 0xFF;
-                response_template[14] = (filetime.dwLowDateTime >> 16) & 0xFF;
-                response_template[13] = (filetime.dwLowDateTime >>  8) & 0xFF;
-                response_template[12] =  filetime.dwLowDateTime        & 0xFF;
+                response_template[15] = (filetime.dwLowDateTime  >> 24) & 0xFF;
+                response_template[14] = (filetime.dwLowDateTime  >> 16) & 0xFF;
+                response_template[13] = (filetime.dwLowDateTime  >>  8) & 0xFF;
+                response_template[12] =  filetime.dwLowDateTime         & 0xFF;
 
                 /*const char response[] = { 90, 0                        //Header Length
                                           0, 1,                     //Size
@@ -249,57 +255,70 @@ int ClientThread(SOCKET ClientSocket)
                                           //Filename here
                                           0}; //file here*/
 
-                char response[sizeof(response_template) + 4];
-                response[3] = ((4 + sizeof(response_template)) >> 24) & 0xFF;
-                response[2] = ((4 + sizeof(response_template)) >> 16) & 0xFF;
-                response[1] = ((4 + sizeof(response_template)) >>  8) & 0xFF;
-                response[0] =  (4 + sizeof(response_template))        & 0xFF;
-                for (i=0;i<sizeof(response_template);i++)
+                char* response = new char[25 + strlen(filename)]{0};
+                response[3] = ((25 + strlen(filename)) >> 24) & 0xFF;
+                response[2] = ((25 + strlen(filename)) >> 16) & 0xFF;
+                response[1] = ((25 + strlen(filename)) >>  8) & 0xFF;
+                response[0] =  (25 + strlen(filename))        & 0xFF;
+                for (i=0;i< 21 + strlen(filename);i++)
                 {
                     response[i + 4] = response_template[i];
                 }
-                char response1 [fsize];
-                for (i=0;i<fsize;i++)
+                char *response1 = new char[fsize];
+                for (i = 0; i < fsize; i++)
                 {
                     response1[i] = fdata[i];
                 }
-                temp = send(ClientSocket, response, sizeof(response), 0);
+                delete[] fdata;
+                temp = send(ClientSocket, response, static_cast<int>(25 + strlen(filename)), 0);
                 std::cout << "FTP: File info packet sent\n";
                 if (temp == SOCKET_ERROR)
                 {
                     printf("FTP: Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
-                temp = send(ClientSocket, response1, sizeof(response1), 0);
+                temp = send(ClientSocket, response1, fsize, 0);
                 std::cout << "FTP: File packet sent\n";
                 if (temp == SOCKET_ERROR)
                 {
                     printf("FTP: Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf;
                     closesocket(ClientSocket);
-                    //WSACleanup();
                     return 1;
                 }
-                temp = recv(ClientSocket, recvbuf, recvbuflen, 0);
-                if (temp < 0)
-                    std::cout << "FTP: client closed the connection" << std::endl;
-                delete[] recvbuf;
+                temp = shutdown(ClientSocket, SD_BOTH);
+                if (temp == SOCKET_ERROR)
+                {
+                    printf("FTP: Send failed: %d\n", WSAGetLastError());
+                    delete[] recvbuf;
+                    closesocket(ClientSocket);
+                    return 1;
+                }
+                std::cout << "FTP: Connection closed\n";
             }
             else
             {
                 printf("FTP: recv failed: %d\n", WSAGetLastError());
-                closesocket(ClientSocket);
                 delete[] recvbuf;
+                closesocket(ClientSocket);
                 return 1;
             }
+            delete[] recvbuf;
+            closesocket(ClientSocket);
             break;
         }
         case 0x03: //Telnet clients, shouldn't ever be accessed
         case 0x63:
         {
             delete[] recvbuf;
+            game[0] = 'C';
+            game[1] = 'H';
+            game[2] = 'A';
+            game[3] = 'T';
             ret = Telnet(ClientSocket);
+            closesocket(ClientSocket);
             if (ret != 0)
                 return ret;
             break;
@@ -308,10 +327,10 @@ int ClientThread(SOCKET ClientSocket)
         {
             std::cout << "Requested unsupported protocol: " << std::hex << (int)recvbuf[0] << std::dec << std::endl;
             delete[] recvbuf;
+            closesocket(ClientSocket);
             break;
         }
     }
-    closesocket(ClientSocket);
     return 0;
 }
 int MTListenSocketThread(LPVOID pParam)
@@ -352,7 +371,6 @@ int MTListenSocketThread(LPVOID pParam)
     if (temp == SOCKET_ERROR)
     {
         printf("bind failed with error: %d\n", WSAGetLastError());
-        freeaddrinfo(result);
         closesocket(ListenSocket);
         WSACleanup();
         return 1;
@@ -367,11 +385,12 @@ int MTListenSocketThread(LPVOID pParam)
 
     while(!quit)
     {
-        SOCKET ClientSocket=accept(ListenSocket,
-            NULL,NULL);
+        SOCKET ClientSocket;
+        if ((ClientSocket = accept(ListenSocket, NULL, NULL)) == INVALID_SOCKET) break;
         std::thread child(ClientThread, ClientSocket);
         child.detach();
     }
+    closesocket(ListenSocket);
     return 0;
 }
 int main()
@@ -385,7 +404,7 @@ int main()
 	    //if ((ch == 0x0A || ch == 0x0D) && buf.length() >= 80)
 	    if (ch == 0x0A && buf.length() >= 80)
         {
-            users[buf.substr(0,16).c_str()]= std::tuple<std::string, std::string, std::string>
+            users[buf.substr(0,16)]= std::tuple<std::string, std::string, std::string>
             (buf.substr(16,32), buf.substr(48,32), buf.substr(80));
             buf = "";
         }
@@ -417,13 +436,13 @@ int main()
         u.write(iter->first.c_str(), 16);
         u.write(std::get<0>(iter->second).c_str(), 32);
         u.write(std::get<1>(iter->second).c_str(), 32);
-        char *email = std::get<2>(iter->second).c_str();
+        const char *email = std::get<2>(iter->second).c_str();
         u.write(email, strlen(email));
         u << (char)0x0A;
     }
     closesocket(ListenSocket);
     WSACleanup();
-    delete [] recvbuf1;
-    delete [] recvbuf2;
+    //TODO:?delete [] recvbuf1;
+    //TODO:?delete [] recvbuf2;
     return nRetCode;
 }
