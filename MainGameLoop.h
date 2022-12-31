@@ -109,15 +109,16 @@ int GameLoop(SOCKET ClientSocket, char* gamearg)
                     //DWORD ipi = inet_addr(ip);
 
                     IN_ADDR* addr = new IN_ADDR;
-                    inet_pton(AF_INET, ip, &addr);
+                    inet_pton(AF_INET, ip, addr);
                     DWORD ipi = addr->S_un.S_addr;
 
                     unsigned int port = std::get<3>(games[pgame]);
-                    char* SID_GETADVLISTEX = new char[40 + size1 + size2 + size3 + 3] {
+                    size_t size = 40 + size1 + size2 + size3 + 3;
+                    char* SID_GETADVLISTEX = new char[size] {
                     (char)0xFFu, 0x09u, 0x00u, 0x00u, 0x01u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x09u, 0x00u, 0x04u, 0x00u,
                     0x02u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
                     /*^PORT  */ /*^IP address of host*/
-        0x11u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u };
+                    0x11u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u };
                     /*^Elapsed seconds  */
                     for (int i = 0; i <= size1; i++)
                         SID_GETADVLISTEX[40 + i] = pgame[i];
@@ -125,8 +126,8 @@ int GameLoop(SOCKET ClientSocket, char* gamearg)
                         SID_GETADVLISTEX[41 + size1 + i] = ppass[i];
                     for (int i = 0; i <= size3; i++)
                         SID_GETADVLISTEX[42 + size1 + size2 + i] = pstat[i];
-                    SID_GETADVLISTEX[2] = sizeof(SID_GETADVLISTEX) & 0xFF;
-                    SID_GETADVLISTEX[3] = sizeof(SID_GETADVLISTEX) >> 8 & 0xFF;
+                    SID_GETADVLISTEX[2] = size & 0xFF;
+                    SID_GETADVLISTEX[3] = size >> 8 & 0xFF;
                     SID_GETADVLISTEX[18] = port & 0xFF; //TODO:FIX value!!!!
                     SID_GETADVLISTEX[19] = port >> 8 & 0xFF;
                     SID_GETADVLISTEX[20] = ipi & 0xFF;
@@ -134,7 +135,7 @@ int GameLoop(SOCKET ClientSocket, char* gamearg)
                     SID_GETADVLISTEX[22] = ipi >> 16 & 0xFF;
                     SID_GETADVLISTEX[23] = ipi >> 24 & 0xFF;
                     //TODO: set host IP
-                    temp1 = send(ClientSocket, SID_GETADVLISTEX, sizeof(SID_GETADVLISTEX), 0);
+                    temp1 = send(ClientSocket, SID_GETADVLISTEX, size, 0);
                     delete[] SID_GETADVLISTEX;
                     if (temp1 == SOCKET_ERROR)
                     {
@@ -342,12 +343,13 @@ int GameLoop(SOCKET ClientSocket, char* gamearg)
             std::cout << "Creating Game \"" << gamename << "\"\n";
             char buf[INET_ADDRSTRLEN] = "";
             struct sockaddr_in *name = new sockaddr_in;
-            socklen_t len = sizeof(name);
+            socklen_t len = sizeof(sockaddr_in);
 
             bool fail = false;
-            if (getpeername(ClientSocket, (struct sockaddr*)&name, &len) != 0)
+            if (getpeername(ClientSocket, (sockaddr*)name, &len) != 0)
             {
                 std::cout << "Getting game host address with getpeername failed!\n";
+                std::cout << "WSA Error" << WSAGetLastError() << "\n";
                 fail = true;
             }
             else
